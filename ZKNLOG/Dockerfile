@@ -1,10 +1,19 @@
-# Tahap 1: Build aplikasi menggunakan Maven
-FROM maven:3.8.5-openjdk-17 AS build
+# Gunakan image Maven dengan Java 17 yang lebih kompatibel
+FROM maven:3.8.4-openjdk-17 AS build
+WORKDIR /app
+
+# Copy seluruh isi folder ZKNLOG ke dalam image
 COPY . .
+
+# Jalankan build dan lewati pengetesan agar cepat
 RUN mvn clean package -DskipTests
 
-# Tahap 2: Jalankan aplikasi
+# Tahap akhir untuk menjalankan aplikasi
 FROM eclipse-temurin:17-jdk-alpine
-COPY --from=build /target/*.jar app.jar
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+
+# Port standar Spring Boot
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app.jar"]
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
