@@ -1,17 +1,17 @@
-# Tahap 1: Build
+# Gunakan Java 17 yang sudah termasuk Maven agar stabil
 FROM maven:3.8.5-openjdk-17 AS build
 WORKDIR /app
-# Copy hanya file pom.xml dulu untuk memanfaatkan cache Docker
-COPY pom.xml .
-RUN mvn dependency:go-offline
 
-# Copy sisa kode dan build
+# Copy seluruh isi folder ZKNLOG
 COPY . .
+
+# Build aplikasi menjadi file .jar
 RUN mvn clean package -DskipTests
 
-# Tahap 2: Runtime
-FROM amazoncorretto:17-alpine
+# Jalankan aplikasi menggunakan Java
+FROM openjdk:17-jdk-slim
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
