@@ -1,12 +1,16 @@
-# Tahap Build
-FROM maven:3.8.5-openjdk-17-slim AS build
+# Tahap 1: Build
+FROM maven:3.8.5-openjdk-17 AS build
 WORKDIR /app
-COPY . .
-# Paksa Maven menggunakan setting sederhana
-RUN mvn clean package -DskipTests -Dmaven.main.skip=false
+# Copy hanya file pom.xml dulu untuk memanfaatkan cache Docker
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Tahap Runtime
-FROM openjdk:17-jdk-slim
+# Copy sisa kode dan build
+COPY . .
+RUN mvn clean package -DskipTests
+
+# Tahap 2: Runtime
+FROM amazoncorretto:17-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
