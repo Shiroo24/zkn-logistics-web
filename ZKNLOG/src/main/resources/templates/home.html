@@ -1,0 +1,59 @@
+<div xmlns:th="http://www.thymeleaf.org"
+     xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+     layout:decorate="~{layout}">
+
+    <div layout:fragment="content">
+        <div class="mb-5">
+            <h2 class="fw-bold text-dark mb-1">Surabaya Warehouse <span class="text-danger">Overview</span></h2>
+            <p class="text-muted fw-medium">Monitoring sistem logistik real-time.</p>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="p-4 rounded-4 shadow-sm border bg-white h-100 position-relative overflow-hidden">
+                    <div class="position-relative z-1">
+                        <div class="text-muted small fw-bold mb-2 text-uppercase">Total Items</div>
+                        <h1 class="fw-bold mb-1 display-5" th:text="${totalQty}">0</h1>
+                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2">
+                             <span th:text="${totalModels}">0</span> Produk Terdaftar
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="p-4 rounded-4 shadow-sm border-0 bg-dark h-100 position-relative overflow-hidden">
+                    <div class="position-relative z-1 text-white">
+                        <div class="text-white-50 small fw-bold mb-2 text-uppercase">System Status</div>
+                        <h2 class="fw-bold mb-1" th:text="${systemStatus}">OPERATIONAL</h2>
+                        <div class="d-flex align-items-center mt-3 text-success small fw-bold">
+                            <div class="spinner-grow spinner-grow-sm me-2"></div> Live Update Active
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="p-4 rounded-4 shadow-sm border-0 bg-danger h-100 text-white position-relative">
+                    <div class="position-relative z-1">
+                        <div class="text-white-50 small fw-bold mb-3 text-uppercase">Quick Actions</div>
+                        <div class="d-grid gap-2">
+                            <a th:href="@{/resiscreen}" class="btn btn-light btn-sm fw-bold rounded-pill text-danger">Track Resi</a>
+                            <a th:href="@{/datastock}" class="btn btn-outline-light btn-sm fw-bold rounded-pill">Data Stock</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="bg-white p-5 rounded-4 shadow-sm border text-center">
+                    <i class="fa-solid fa-bolt text-danger mb-3" style="font-size: 3rem;"></i>
+                    <h4 class="fw-bold">ZKN LOGISTIC SYSTEM</h4>
+                    <p class="text-muted">Selamat datang di pusat kendali inventaris. Silakan pilih menu di samping untuk mulai bekerja.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

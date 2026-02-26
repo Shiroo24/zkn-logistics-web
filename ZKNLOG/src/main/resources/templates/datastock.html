@@ -1,0 +1,162 @@
+<div xmlns:th="http://www.thymeleaf.org"
+     xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+     layout:decorate="~{layout}">
+
+    <div layout:fragment="content">
+        <style>
+            .variant-row { transition: all 0.2s ease-in-out !important; }
+            .variant-row:hover {
+                transform: translateY(-3px);
+                border-color: #EF4444 !important;
+                background-color: #ffffff !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+        </style>
+
+        <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded-4 shadow-sm border">
+            <div>
+                <span class="badge bg-danger mb-1 px-2 py-1 rounded-pill fw-bold" style="font-size: 0.6rem;">
+                    <i class="fa-solid fa-clock me-1"></i> LIVE STOCK
+                </span>
+                <h4 class="fw-bold mb-0 text-dark">Data Stock</h4>
+                <small class="text-muted small">
+                    Sync: <span id="syncClock" class="text-danger fw-bold" th:text="${lastSync}">00:00:00</span>
+                </small>
+            </div>
+
+            <div class="search-wrapper d-flex align-items-center bg-light px-3 rounded-pill border" style="width: 350px;">
+                <i class="fa fa-search text-muted me-2"></i>
+                <input type="text" id="searchStock" class="form-control border-0 bg-transparent shadow-none py-1 small"
+                       placeholder="Cari Produk atau SKU..." autocomplete="off">
+            </div>
+        </div>
+
+        <div th:if="${error}" class="alert alert-danger shadow-sm border-0 mb-3 p-2 small" th:text="${error}"></div>
+
+        <div id="stockContainer">
+            <div th:each="entry, iterStat : ${groupedStock}"
+                 class="stock-card shadow-sm mb-3 bg-white rounded-4 border overflow-hidden"
+                 th:classappend="${iterStat.index >= 10} ? 'd-none' : ''">
+
+                <div class="card-header-stock p-3 d-flex justify-content-between align-items-center border-bottom bg-light bg-opacity-50">
+                    <div>
+                        <span class="brand-label text-danger fw-black" th:text="${entry.value[0].brand.toUpperCase()}" style="letter-spacing: 1px; font-size: 0.6rem;">BRAND</span>
+                        <h5 class="product-name fw-bold mb-0" th:text="${entry.key}">NAMA PRODUK</h5>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <div class="price-tag px-2 py-1 bg-white rounded-2 border" style="font-size: 0.75rem;">
+                            <span class="text-muted">HJ:</span> <b class="text-success" th:text="${entry.value[0].hj}">0</b>
+                        </div>
+                        <div class="price-tag px-2 py-1 bg-white rounded-2 border" style="font-size: 0.75rem;">
+                            <span class="text-muted">HB:</span> <b th:text="${entry.value[0].hb}">0</b>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="variant-grid p-2" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">
+                    <div th:each="v : ${entry.value}" class="variant-row p-2 rounded-3 border d-flex align-items-center"
+                         style="background: #F8FAFC; cursor: pointer; min-height: 55px;"
+                         th:onclick="showDetail([[${v.nama}]], [[${v.sku}]], [[${v.bin}]], [[${v.qty}]], [[${v.cat}]], [[${v.hb}]], [[${v.hj}]])">
+
+                        <div class="flex-grow-1" style="line-height: 1.1;">
+                            <div class="fw-bold text-dark" style="font-size: 0.8rem;">Size <span th:text="${v.size}"></span></div>
+                            <div class="text-muted" style="font-size: 0.65rem; font-family: monospace;" th:text="${v.sku}">SKU</div>
+                        </div>
+
+                        <div class="text-end me-2" style="line-height: 1;">
+                            <div class="fw-bold text-uppercase" style="font-size: 0.6rem;"
+                                 th:classappend="${v.bin.contains('TOKO') ? 'text-primary' : (v.bin.contains('DEFECT') ? 'text-warning' : 'text-danger')}"
+                                 th:text="${v.bin}">LOC</div>
+                        </div>
+
+                        <div class="badge-qty text-white fw-bold d-flex align-items-center justify-content-center rounded-2 shadow-sm"
+                             th:classappend="${v.bin.contains('TOKO') ? 'bg-primary' : (v.bin.contains('DEFECT') ? 'bg-warning' : 'bg-danger')}"
+                             style="width: 32px; height: 32px; font-size: 0.85rem;"
+                             th:text="${v.qty}">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="detailModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-5">
+                    <div class="modal-body p-5 text-center">
+                        <div class="mb-2"><span class="badge bg-light text-dark px-3 py-2 rounded-pill fw-bold" style="font-size: 0.65rem;">DETAIL PRODUK</span></div>
+                        <h2 id="m-sku" class="fw-black mb-4 text-primary">SKU123</h2>
+                        <div class="row g-3 text-start mb-4 bg-light p-3 rounded-4">
+                            <div class="col-12"><label class="small text-muted fw-bold">Nama Produk</label><div id="m-nama" class="fw-bold text-dark">...</div></div>
+                            <div class="col-6"><label class="small text-muted fw-bold">Kategori</label><div id="m-cat" class="fw-bold">...</div></div>
+                            <div class="col-3"><label class="small text-muted fw-bold">HB</label><div id="m-hb" class="fw-bold">...</div></div>
+                            <div class="col-3"><label class="small text-muted fw-bold">HJ</label><div id="m-hj" class="fw-bold text-success">...</div></div>
+                        </div>
+                        <div id="m-box" class="p-4 text-white rounded-4 shadow">
+                            <small class="opacity-75 text-uppercase fw-bold" style="font-size: 0.7rem;">BIN LOKASI</small>
+                            <h1 id="m-bin" class="fw-black mb-1">LOCATION</h1>
+                            <div class="h4 mb-0 fw-bold">Stock: <span id="m-qty">0</span> Pcs</div>
+                        </div>
+                        <button class="btn btn-dark w-100 rounded-pill mt-4 p-3 fw-bold shadow-sm" data-bs-dismiss="modal">TUTUP</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Jalankan script setelah DOM siap
+            document.addEventListener('DOMContentLoaded', function() {
+                const searchInput = document.getElementById('searchStock');
+                const syncEl = document.getElementById('syncClock');
+
+                // Ambil waktu sekarang jika kosong
+                if(!syncEl.innerText || syncEl.innerText === '00:00:00') {
+                    const now = new Date();
+                    syncEl.innerText = now.getHours().toString().padStart(2, '0') + ":" +
+                                       now.getMinutes().toString().padStart(2, '0') + ":" +
+                                       now.getSeconds().toString().padStart(2, '0');
+                }
+
+                searchInput.addEventListener('input', function() {
+                    const val = this.value.toLowerCase().trim();
+                    const allCards = document.querySelectorAll('.stock-card');
+
+                    allCards.forEach((card, index) => {
+                        const content = card.textContent.toLowerCase();
+
+                        if (val.length > 0) {
+                            // Jika cari: Tampilkan yang cocok
+                            if (content.includes(val)) {
+                                card.classList.remove('d-none');
+                            } else {
+                                card.classList.add('d-none');
+                            }
+                        } else {
+                            // Jika kosong: Tampilkan hanya 10 pertama
+                            if (index < 10) {
+                                card.classList.remove('d-none');
+                            } else {
+                                card.classList.add('d-none');
+                            }
+                        }
+                    });
+                });
+            });
+
+            function showDetail(nama, sku, bin, qty, cat, hb, hj) {
+                document.getElementById('m-nama').innerText = nama;
+                document.getElementById('m-sku').innerText = sku;
+                document.getElementById('m-bin').innerText = bin;
+                document.getElementById('m-qty').innerText = qty;
+                document.getElementById('m-cat').innerText = cat;
+                document.getElementById('m-hb').innerText = hb;
+                document.getElementById('m-hj').innerText = hj;
+
+                let color = "#EF4444";
+                if(bin.toUpperCase().includes("TOKO")) color = "#3B82F6";
+                if(bin.toUpperCase().includes("DEFECT") || bin.toUpperCase().includes("REJECT")) color = "#F59E0B";
+
+                document.getElementById('m-box').style.backgroundColor = color;
+                new bootstrap.Modal(document.getElementById('detailModal')).show();
+            }
+        </script>
+    </div>
+</div>
