@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<div layout:fragment="content">
+    <style>
+        /* --- UI & ANIMATION --- */
+        .fw-800 { font-weight: 800; }
+        .table-card { border-radius: 12px; overflow: hidden; transition: all 0.3s ease; }
+        .table-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important; }
+
+        /* Table Hover Animation */
+        .table tbody tr { transition: background-color 0.2s ease; }
+        .table-hover tbody tr:hover { background-color: rgba(239, 68, 68, 0.03) !important; cursor: default; }
+
+        /* Button Hover Effects */
+        .btn-action {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-action:active { transform: translateY(0); }
+
+        /* Status Badge Pulse */
+        #fileStatus .badge { animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        /* Stat Cards */
+        .card-stat-toko { border-radius: 12px; border-left: 5px solid #EF4444 !important; transition: transform 0.3s; }
+        .card-stat-l4 { border-radius: 12px; border-left: 5px solid #10B981 !important; transition: transform 0.3s; }
+        .card-stat-toko:hover, .card-stat-l4:hover { transform: scale(1.02); }
+
+        /* --- PERBAIKAN TOTAL PRINT (Tetap Dipertahankan) --- */
+        @media print {
+            @page { size: portrait; margin: 0.5cm !important; }
+            .no-print, .btn, #fileStatus, .swal2-container, .row.mb-4,
+            aside, .sidebar, .drawer, nav, header, .workspace-sidebar,
+            [class*="sidebar"], [class*="drawer"], [class*="nav"] {
+                display: none !important; width: 0 !important;
+            }
+            body, html { background-color: white !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            main, .main-content, .workspace, .container-fluid, #printableArea {
+                margin: 0 !important; padding: 0 !important; width: 100% !important;
+                max-width: 100% !important; position: absolute !important; left: 0 !important; top: 0 !important;
+            }
+            .card { border: 1px solid #000 !important; box-shadow: none !important; margin-bottom: 5px !important; border-radius: 0 !important; width: 100% !important; }
+            .card-header { padding: 2px 8px !important; background-color: #eee !important; border-bottom: 1px solid #000 !important; }
+            .table { width: 100% !important; border-collapse: collapse !important; }
+            .table th, .table td { padding: 1px 4px !important; font-size: 7.5pt !important; border: 1px solid #999 !important; color: black !important; line-height: 1.0 !important; }
+            .table thead th { background-color: #ddd !important; font-weight: bold !important; }
+            .badge { background: none !important; color: black !important; font-weight: bold !important; padding: 0 !important; font-size: 7.5pt !important; }
+            h6 { font-size: 8.5pt !important; margin: 0 !important; }
+        }
+    </style>
+
+    <div class="container-fluid py-3" id="printableArea">
+        <div class="card border-0 shadow-sm mb-4 no-print" style="border-radius: 15px;">
+            <div class="card-body p-3">
+                <div class="row align-items-center">
+                    <div class="col-lg-4 mb-3 mb-lg-0 text-center text-lg-start">
+                        <h3 class="fw-800 text-dark mb-0">Alokasi Stock In</h3>
+                        <p class="text-muted small mb-0">Manajemen Distribusi Barang PO</p>
+                    </div>
+                    <div class="col-lg-8">
+                        <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-lg-end">
+                            <div id="fileStatus" class="d-none me-1">
+                                <div class="badge bg-soft-primary text-primary border border-primary rounded-pill p-2 px-3" style="background: #eef2ff;">
+                                    <i class="fa-solid fa-file-circle-check me-2"></i><span id="fileCountText">0 Files</span>
+                                </div>
+                            </div>
+
+                            <input type="file" id="fileInput" multiple accept=".xlsx, .xls" style="display: none;" onchange="updateFileLabel()">
+
+                            <button onclick="document.getElementById('fileInput').click()" class="btn btn-primary btn-action px-3 shadow-sm">
+                                <i class="fa-solid fa-cloud-arrow-up me-2"></i> IMPORT
+                            </button>
+                            <button onclick="prosesData()" class="btn btn-danger btn-action px-3 shadow-sm">
+                                <i class="fa-solid fa-bolt me-2"></i> PROSES
+                            </button>
+                            <button onclick="printData()" class="btn btn-dark btn-action px-3 shadow-sm">
+                                <i class="fa-solid fa-print me-2"></i> PRINT
+                            </button>
+                            <button onclick="exportToExcel()" class="btn btn-success btn-action px-3 shadow-sm">
+                                <i class="fa-solid fa-file-excel me-2"></i> EXPORT
+                            </button>
+                            <button onclick="clearData()" class="btn btn-outline-secondary btn-action px-3 shadow-sm">
+                                <i class="fa-solid fa-rotate-left me-2"></i> RESET
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4 no-print">
+            <div class="col-md-6 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm p-3 card-stat-toko">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-uppercase fw-bold text-muted">Qty Alokasi Store</small>
+                            <h2 id="countToko" class="fw-800 mb-0 text-danger">0</h2>
+                        </div>
+                        <i class="fa-solid fa-shop fa-2x text-light"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm p-3 card-stat-l4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-uppercase fw-bold text-muted">Qty Alokasi Lantai 4</small>
+                            <h2 id="countL4" class="fw-800 mb-0 text-success">0</h2>
+                        </div>
+                        <i class="fa-solid fa-boxes-stacked fa-2x text-light"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4 table-card">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-danger"><i class="fa-solid fa-shop me-2"></i> PEMBAGIAN STORE</h6>
+                <span class="badge bg-danger rounded-pill no-print">Live Data</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">ARTIKEL / SKU</th>
+                            <th class="text-center">SIZE</th>
+                            <th class="text-center">PO</th>
+                            <th class="text-center">STORE</th>
+                            <th class="text-center">ALOKASI</th>
+                            <th class="pe-3">KETERANGAN</th>
+                        </tr>
+                        </thead>
+                        <tbody id="resultToko">
+                        <tr><td colspan="6" class="text-center py-5 text-muted small">Belum ada data store. Silahkan import file PO.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm table-card">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-success"><i class="fa-solid fa-layer-group me-2"></i> PEMBAGIAN LANTAI 4 (KOLI)</h6>
+                <span class="badge bg-success rounded-pill no-print">Koli List</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                        <tr>
+                            <th class="ps-3">ARTIKEL / SKU</th>
+                            <th class="text-center">SIZE</th>
+                            <th class="text-center">PO</th>
+                            <th class="text-center">KOLI</th>
+                            <th class="pe-3">KETERANGAN KOLI</th>
+                        </tr>
+                        </thead>
+                        <tbody id="resultL4">
+                        <tr><td colspan="5" class="text-center py-5 text-muted small">Belum ada data lantai 4.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        let dataStoreGlobal = [];
+        let dataL4Global = [];
+
+        function updateFileLabel() {
+            const input = document.getElementById('fileInput');
+            const statusDiv = document.getElementById('fileStatus');
+            const text = document.getElementById('fileCountText');
+            if (input.files.length > 0) {
+                statusDiv.classList.remove('d-none');
+                text.innerText = input.files.length + " PO Files";
+            } else {
+                statusDiv.classList.add('d-none');
+            }
+        }
+
+        async function prosesData() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) {
+                Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Import file PO terlebih dahulu!', confirmButtonColor: '#EF4444' });
+                return;
+            }
+            const result = await uploadPOFiles(fileInput.files);
+            if (result) {
+                dataStoreGlobal = result.hasilToko;
+                dataL4Global = result.hasilL4;
+                renderTables();
+                document.getElementById('countToko').innerText = dataStoreGlobal.reduce((a, b) => a + b.target, 0);
+                document.getElementById('countL4').innerText = dataL4Global.reduce((a, b) => a + b.target, 0);
+            }
+        }
+
+        function renderTables() {
+            const tbodyStore = document.getElementById('resultToko');
+            const tbodyL4 = document.getElementById('resultL4');
+            tbodyStore.innerHTML = '';
+            tbodyL4.innerHTML = '';
+
+            if(dataStoreGlobal.length === 0) {
+                tbodyStore.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted small">Kosong.</td></tr>';
+            } else {
+                dataStoreGlobal.forEach(item => {
+                    tbodyStore.insertAdjacentHTML('beforeend', `
+                        <tr>
+                            <td class="ps-3">
+                                <span class="fw-bold text-dark d-inline-block article-name">${item.namaArt}</span>
+                                <span class="text-muted sku-text"> | ${item.sku}</span>
+                            </td>
+                            <td class="text-center">${item.size}</td>
+                            <td class="text-center">${item.poTotal}</td>
+                            <td class="text-center">${item.stockStore}</td>
+                            <td class="text-center"><span class="badge ${item.target > 0 ? 'bg-danger text-white' : 'bg-light text-muted'}" style="min-width: 30px; font-size: 0.85rem; padding: 5px 8px;">${item.target}</span></td>
+                            <td class="pe-3"><small class="${item.keterangan.includes('NEW') ? 'text-danger fw-bold' : 'text-muted'}">${item.keterangan}</small></td>
+                        </tr>
+                    `);
+                });
+            }
+
+            if(dataL4Global.length === 0) {
+                tbodyL4.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted small">Kosong.</td></tr>';
+            } else {
+                dataL4Global.forEach(item => {
+                    tbodyL4.insertAdjacentHTML('beforeend', `
+                        <tr>
+                            <td class="ps-3">
+                                <span class="fw-bold text-dark d-inline-block article-name">${item.namaArt}</span>
+                                <span class="text-muted sku-text"> | ${item.sku}</span>
+                            </td>
+                            <td class="text-center">${item.size}</td>
+                            <td class="text-center">${item.poTotal}</td>
+                            <td class="fw-bold text-primary text-center">${item.target}</td>
+                            <td class="pe-3"><small class="text-muted fw-bold">${item.keterangan}</small></td>
+                        </tr>
+                    `);
+                });
+            }
+        }
+
+        function clearData() {
+            Swal.fire({
+                title: 'Hapus Data?',
+                text: "Tabel dan file PO akan direset.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Ya, Hapus'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    dataStoreGlobal = [];
+                    dataL4Global = [];
+                    document.getElementById('fileInput').value = "";
+                    document.getElementById('fileStatus').classList.add('d-none');
+                    document.getElementById('countToko').innerText = "0";
+                    document.getElementById('countL4').innerText = "0";
+                    renderTables();
+                }
+            });
+        }
+
+        function printData() { window.print(); }
+
+        function exportToExcel() {
+            if (dataStoreGlobal.length === 0 && dataL4Global.length === 0) return;
+            let csv = "ARTIKEL,SKU,SIZE,PO,ALOKASI,LOKASI,KETERANGAN\n";
+            dataStoreGlobal.forEach(r => csv += `"${r.namaArt}",${r.sku},${r.size},${r.poTotal},${r.target},STORE,"${r.keterangan}"\n`);
+            dataL4Global.forEach(r => csv += `"${r.namaArt}",${r.sku},${r.size},${r.poTotal},${r.target},L4,"${r.keterangan}"\n`);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", "alokasi_stock_in.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</div>
+</html>

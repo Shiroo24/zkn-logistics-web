@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZKNLog | Logistics System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --erp-dark: #0F172A;
+            --erp-red: #EF4444;
+            --erp-bg: #F8FAFC;
+            --sidebar-width: 250px;
+            --sidebar-closed: 75px;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            background: var(--erp-bg);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR COMPACT (NON-FLOATING) --- */
+        #sidebar {
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: var(--erp-dark);
+            display: flex;
+            flex-direction: column;
+            transition: var(--transition-smooth);
+            position: relative;
+            flex-shrink: 0;
+            z-index: 1000;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        #sidebar.closed {
+            width: var(--sidebar-closed);
+        }
+
+        #toggle-btn {
+            position: absolute;
+            right: -12px;
+            top: 30px;
+            width: 24px;
+            height: 24px;
+            background: var(--erp-red);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            z-index: 1001;
+            font-size: 0.7rem;
+            border: 2px solid var(--erp-bg);
+        }
+
+        .brand-section {
+            padding: 24px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            overflow: hidden;
+        }
+
+        .logo-box {
+            min-width: 38px;
+            height: 38px;
+            background: var(--erp-red);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+        }
+
+        .nav-link {
+            position: relative;
+            padding: 10px 16px;
+            color: #94A3B8;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            margin: 4px 12px;
+            transition: var(--transition-smooth);
+            white-space: nowrap;
+        }
+
+        .nav-link i {
+            min-width: 20px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .nav-link:hover {
+            color: #FFFFFF;
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateX(5px);
+        }
+
+        .nav-link.active-menu {
+            background: var(--erp-red) !important;
+            color: white !important;
+            box-shadow: 0 8px 16px -4px rgba(239, 68, 68, 0.4);
+        }
+
+        .menu-label {
+            color: #475569;
+            font-size: 0.6rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            padding: 20px 25px 8px;
+            transition: opacity 0.2s;
+        }
+
+        #sidebar.closed .nav-text,
+        #sidebar.closed .brand-info,
+        #sidebar.closed .menu-label {
+            opacity: 0;
+            display: none;
+        }
+
+        #sidebar.closed .nav-link {
+            justify-content: center;
+            margin: 4px 10px;
+            padding: 12px;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-bottom: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        #main-content {
+            flex-grow: 1;
+            padding: 25px 35px;
+            height: 100vh;
+            overflow-y: auto;
+            background: var(--erp-bg);
+        }
+
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.8); display: none; align-items: center;
+            justify-content: center; z-index: 9999; color: white; flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+    <div class="spinner-border text-danger mb-3" role="status"></div>
+    <span class="fw-bold">Memproses Data...</span>
+</div>
+
+<nav id="sidebar">
+    <div id="toggle-btn"><i class="fa-solid fa-chevron-left"></i></div>
+
+    <div class="brand-section">
+        <div class="logo-box">
+            <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div class="brand-info">
+            <b class="text-white mb-0" style="font-size: 0.95rem; display: block; line-height: 1.2;">ZKNLog</b>
+            <small class="text-white" style="font-size: 0.65rem;">Logistics Center</small>
+        </div>
+    </div>
+
+    <div class="menu-label">Workspace</div>
+    <div class="menu-group">
+        <a th:href="@{/}" class="nav-link">
+            <i class="fa-solid fa-house"></i> <span class="nav-text">Overview</span>
+        </a>
+        <a th:href="@{/datastock}" class="nav-link">
+            <i class="fa-solid fa-box-archive"></i> <span class="nav-text">Data Stock</span>
+        </a>
+        <a th:href="@{/resiscreen}" class="nav-link">
+            <i class="fa-solid fa-receipt"></i> <span class="nav-text">Tracking Resi</span>
+        </a>
+        <a th:href="@{/stock-in}" class="nav-link">
+            <i class="fa-solid fa-right-to-bracket"></i> <span class="nav-text">Pembagian Stock In</span>
+        </a>
+        <a th:href="@{/import-stock}"
+           class="nav-link"
+           th:classappend="${currentMenu == 'stock' ? 'active-menu' : ''}">
+            <i class="fa-solid fa-file-circle-minus"></i>
+            <span class="nav-text">Stock Minus</span>
+        </a>
+    </div>
+
+    <div class="menu-label">Applications</div>
+    <div class="menu-group">
+        <a th:href="@{/mobile-app}" class="nav-link">
+            <i class="fa-solid fa-mobile-screen-button"></i> <span class="nav-text">Mobile App</span>
+        </a>
+    </div>
+
+    <div class="sidebar-footer">
+        <a href="#" class="nav-link">
+            <i class="fa-solid fa-gear"></i> <span class="nav-text">Settings</span>
+        </a>
+    </div>
+</nav>
+
+<main id="main-content">
+    <div layout:fragment="content"></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const navLinks = document.querySelectorAll('.nav-link');
+
+    // 1. Sidebar Toggle Logic
+    toggleBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('closed');
+        const icon = toggleBtn.querySelector('i');
+        if(sidebar.classList.contains('closed')) {
+            icon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+        } else {
+            icon.classList.replace('fa-chevron-right', 'fa-chevron-left');
+        }
+    });
+
+    // 2. Auto-Active Menu Highlight
+    const currentPath = window.location.pathname;
+    navLinks.forEach(link => {
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active-menu');
+        }
+    });
+
+    // 3. Global Upload Function untuk Stock In
+    async function uploadPOFiles(files) {
+        if (files.length === 0) return null;
+
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append("files", files[i]);
+        }
+
+        const loader = document.getElementById('loading-overlay');
+        if (loader) loader.style.display = 'flex';
+
+        try {
+            const response = await fetch('/api/stock-in/proses', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            const data = await response.json();
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Data PO berhasil diproses.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            return data;
+        } catch (error) {
+            console.error("Upload error:", error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Memproses',
+                text: error.message
+            });
+            return null;
+        } finally {
+            if (loader) loader.style.display = 'none';
+        }
+    }
+</script>
+</body>
+</html>

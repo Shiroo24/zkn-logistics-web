@@ -1,0 +1,326 @@
+<div xmlns:th="http://www.thymeleaf.org"
+     xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+     layout:decorate="~{layout}">
+
+    <div layout:fragment="content">
+        <div class="d-flex justify-content-between align-items-end mb-4 bg-white p-4 rounded-4 shadow-sm border">
+            <div>
+                <span class="badge bg-primary mb-2 px-3 py-2 rounded-pill fw-bold" style="font-size: 0.65rem;">
+                    <i class="fa-solid fa-file-excel me-1 text-white"></i> STOCK MANAGEMENT
+                </span>
+                <h3 class="fw-bold mb-0 text-dark">Import Stock Minus</h3>
+                <small class="text-muted fw-semibold">Gudang / <span class="text-danger">Stock Minus</span></small>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 bg-white p-5 text-center">
+            <div class="mx-auto mb-4 d-flex align-items-center justify-content-center bg-light rounded-circle" style="width: 80px; height: 80px;">
+                <i class="fa-solid fa-cloud-arrow-up fa-2xl text-danger"></i>
+            </div>
+
+            <h4 class="fw-bold text-dark">Upload Data Multiple Adjustment</h4>
+            <p class="text-muted mb-4">Pilih file Excel (.xlsx) pastikan (termasuk yang sudah habis).</p>
+
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <input class="form-control form-control-lg rounded-pill border-light bg-light px-4"
+                               type="file" id="fileInput" name="file" accept=".xlsx" required style="font-size: 0.9rem;">
+                    </div>
+                    <button type="button" id="btnStep1" onclick="jalankanStep1()" class="btn btn-dark btn-lg w-100 rounded-pill fw-bold shadow" style="height: 55px;">
+                        <i class="fa-solid fa-gears me-2"></i> PROSES FILTER
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content border-0 rounded-4 shadow">
+                    <div class="modal-header border-0 p-4 bg-light rounded-top-4">
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark mb-0" id="modalTitle">Hasil Filter: Stock Minus</h5>
+                            <small class="text-danger fw-bold" id="statusLabel">Data QTY < 0 Berhasil Difilter</small>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="stockTable">
+                                <thead class="bg-light sticky-top">
+                                <tr id="tableHeaderRow">
+                                    <th th:each="h : ${headers}" th:text="${h}"
+                                        class="py-3 text-secondary ps-4"
+                                        style="font-size: 0.65rem; text-transform: uppercase;"></th>
+                                </tr>
+                                </thead>
+                                <tbody id="tableBody">
+                                <tr th:each="row : ${rows}">
+                                    <td th:each="cell : ${row}" th:text="${cell}"
+                                        class="ps-4 py-3 fw-semibold text-dark" style="font-size: 0.8rem;"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 p-3 bg-white rounded-bottom-4">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold" data-bs-dismiss="modal">Tutup</button>
+                        <div id="dynamicBtnContainer" class="d-flex gap-2">
+                            <button type="button" id="btnStep2" onclick="jalankanStep2()" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+                                LANJUT STEP 2 <i class="fa-solid fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="javascript">
+            let myModal = null;
+            document.addEventListener('DOMContentLoaded', function() {
+                myModal = new bootstrap.Modal(document.getElementById('resultModal'));
+            });
+
+            // --- LOGIKA RESET SAAT MODAL DITUTUP ---
+document.getElementById('resultModal').addEventListener('hidden.bs.modal', function () {
+    // 1. Reset input file
+    const fileInput = document.getElementById('fileInput');
+    fileInput.value = "";
+
+    // 2. Kembalikan tombol Step 2 ke keadaan awal (Merah)
+    const btnContainer = document.getElementById('dynamicBtnContainer');
+    btnContainer.innerHTML = `
+        <button type="button" id="btnStep2" onclick="jalankanStep2()" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">
+            LANJUT STEP 2 <i class="fa-solid fa-arrow-right ms-1"></i>
+        </button>
+    `;
+
+    // 3. Reset label status di modal
+    document.getElementById('statusLabel').innerText = "Data QTY < 0 Berhasil Difilter";
+    document.getElementById('modalTitle').innerText = "Hasil Filter: Stock Minus";
+
+    // Optional: Munculkan notifikasi kecil bahwa form telah direset
+    console.log("Form reset: File dihapus, silakan upload kembali.");
+});
+
+            // Fungsi Helper untuk merender ulang isi tabel dari response server
+            function refreshTable(htmlText) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                const serverTable = doc.getElementById('stockTable');
+
+                if (serverTable) {
+                    const localTable = document.getElementById('stockTable');
+                    localTable.innerHTML = serverTable.innerHTML;
+                    return true;
+                }
+                return false;
+            }
+
+            // --- EKSEKUSI STEP 1 ---
+            window.jalankanStep1 = function() {
+                const fileInput = document.getElementById('fileInput');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert("Pilih file Excel terlebih dahulu!");
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append("file", fileInput.files[0]);
+
+                const btn = document.getElementById('btnStep1');
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sedang Memproses...';
+                btn.disabled = true;
+
+                fetch('/import-stock/process', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(html => {
+                    if (refreshTable(html)) {
+                        // Cek apakah tabel ada isinya (selain header)
+                        const rowCount = document.querySelectorAll('#tableBody tr').length;
+                        document.getElementById('modalTitle').innerText = "Hasil Filter: Stock Minus";
+                        document.getElementById('statusLabel').innerText = "Ditemukan " + rowCount + " baris minus.";
+                        myModal.show();
+                    } else {
+                        alert("Tidak ada data stock minus ditemukan.");
+                    }
+                })
+                .catch(err => alert("Terjadi kesalahan server."))
+                .finally(() => {
+                    btn.innerHTML = '<i class="fa-solid fa-gears me-2"></i> PROSES STEP 1';
+                    btn.disabled = false;
+                });
+            };
+
+            // --- EKSEKUSI STEP 2 ---
+            window.jalankanStep2 = function() {
+    const fileInput = document.getElementById('fileInput');
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    const btn = document.getElementById('btnStep2');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengalokasikan...';
+    btn.disabled = true;
+
+    fetch('/import-stock/step2', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(html => {
+        refreshTable(html);
+        document.getElementById('modalTitle').innerText = "Step 2: Alokasi Selesai";
+
+        // --- LOGIK TOMBOL DINAMIS ---
+        const rows = document.querySelectorAll('#tableBody tr');
+        let hasDone = false;
+        let hasAdjustment = false;
+
+        // Scan status di dalam tabel
+        rows.forEach(row => {
+            const statusText = row.innerText.toUpperCase();
+            if (statusText.includes("DONE SET UP")) hasDone = true;
+            if (statusText.includes("NEED ADJUSMENT")) hasAdjustment = true;
+        });
+
+        const container = document.getElementById('dynamicBtnContainer');
+        container.innerHTML = ""; // Kosongkan tombol lama
+
+        // 1. Jika ada DONE SET UP, munculkan tombol DOWNLOAD SET UP
+        if (hasDone) {
+            const btnSetup = document.createElement('button');
+            btnSetup.className = "btn btn-primary rounded-pill px-4 fw-bold shadow-sm";
+            btnSetup.innerHTML = '<i class="fa-solid fa-file-import me-2"></i> DOWNLOAD SET UP';
+            btnSetup.onclick = function() {
+    const rows = document.querySelectorAll('#tableBody tr');
+    const headers = Array.from(document.querySelectorAll('#tableHeaderRow th')).map(th => th.innerText.trim().toUpperCase());
+
+    // Cari index kolom SKU secara dinamis
+    const colSKUIndex = headers.indexOf("SKU");
+
+    // Header CSV
+    let csvContent = "BIN AWAL,BIN TUJUAN,SKU,QUANTITY,NOTES\n";
+
+    let hasData = false;
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const status = cells[cells.length - 1].innerText.trim().toUpperCase();
+
+        if (status === "DONE SET UP") {
+            hasData = true;
+            // Mapping sesuai Logika Macro:
+            const binAwal = cells[cells.length - 3].innerText.trim(); // BIN PENYELESAIAN
+            const binTujuan = cells[1].innerText.trim();             // Kolom ke-2 (BIN)
+            const sku = cells[colSKUIndex].innerText.trim();         // Kolom SKU
+            const qty = cells[cells.length - 2].innerText.trim();     // QTY BIN
+            const notes = "STOCK MINUS";
+
+            // Gabungkan ke baris CSV (pastikan menggunakan koma sebagai pemisah)
+            csvContent += `"${binAwal}","${binTujuan}","${sku}","${qty}","${notes}"\n`;
+        }
+    });
+
+    if (!hasData) {
+        alert("Tidak ada data DONE SET UP untuk di-download.");
+        return;
+    }
+
+    // Format Nama File: DDMM_Stockmin_Set_up.csv
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const fileName = `${dd}${mm}_Stockmin_Set_up.csv`;
+
+    // Proses Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+            container.appendChild(btnSetup);
+        }
+
+        // 2. Jika ada NEED ADJUSTMENT, munculkan tombol DOWNLOAD ADJUSTMENT
+        // Jika HANYA ada DONE SET UP (tidak ada Adjustment), tombol ini tidak muncul
+        if (hasAdjustment) {
+            const btnAdj = document.createElement('button');
+            btnAdj.className = "btn btn-success rounded-pill px-4 fw-bold shadow-sm";
+            btnAdj.innerHTML = '<i class="fa-solid fa-file-excel me-2"></i> DOWNLOAD ADJUSTMENT';
+            btnAdj.onclick = function() {
+    const rows = document.querySelectorAll('#tableBody tr');
+    const headers = Array.from(document.querySelectorAll('#tableHeaderRow th')).map(th => th.innerText.trim());
+
+    // 1. Header CSV (Kolom A sampai K)
+    let csvContent = headers.slice(0, 11).join(",") + "\n";
+
+    let hasData = false;
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        const status = cells[cells.length - 1].innerText.trim().toUpperCase();
+
+        if (status.includes("NEED ADJUSMENT")) {
+            hasData = true;
+            let rowData = [];
+            for (let i = 0; i <= 10; i++) {
+                let cellValue = cells[i] ? cells[i].innerText.trim() : "";
+
+                // Paksa Kolom K (Index 10) jadi 0
+                if (i === 10) cellValue = "0";
+
+                // Bungkus dengan kutip untuk menghindari error jika ada koma di dalam teks
+                rowData.push(`"${cellValue}"`);
+            }
+            csvContent += rowData.join(",") + "\n";
+        }
+    });
+
+    if (!hasData) {
+        alert("Tidak ada data NEED ADJUSMENT.");
+        return;
+    }
+
+    // 2. Penamaan File (Tetap DDMM)
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const fileName = `${dd}${mm}_Stockmin_Adjustment.csv`; // Ubah ke .csv
+
+    // 3. Download proses dengan BOM agar karakter terbaca rapi di Excel
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+};
+            container.appendChild(btnAdj);
+        }
+
+        // Update label status
+        document.getElementById('statusLabel').innerText = "Alokasi selesai diproses.";
+    })
+    .catch(err => {
+        alert("Gagal memproses alokasi.");
+        btn.innerHTML = 'LANJUT STEP 2';
+        btn.disabled = false;
+    });
+};
+        </script>
+
+        <style>
+            #stockTable tbody tr:hover { background-color: #f8fafc !important; box-shadow: inset 4px 0 0 0 #EF4444; }
+            .modal-xl { max-width: 95%; }
+            .table-responsive { max-height: 65vh; overflow-y: auto; }
+            /* Styling header agar tetap terlihat saat scroll */
+            #stockTable thead th { background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; }
+        </style>
+    </div>
+</div>
